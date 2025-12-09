@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Madani Budget Planner</title>
+    <!-- Tailwind CSS for Design -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- Chart.js for Graphs -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- jsPDF for PDF Generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+    
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f3f4f6;
+        }
+        .card-shadow {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        .progress-bar {
+            transition: width 1s ease-in-out;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col items-center p-4">
+
+    <!-- Header & Main Balance -->
+    <header class="w-full max-w-md bg-indigo-600 text-white p-6 rounded-xl shadow-lg mb-4">
+        <div class="flex justify-between items-start mb-4">
+            <div>
+                <div class="flex items-center gap-2">
+                    <h1 class="text-xl font-bold"><i class="fas fa-wallet"></i> Madani Planner</h1>
+                    <!-- Settings Button -->
+                    <button onclick="toggleBudgetModal()" class="bg-indigo-500 hover:bg-indigo-400 p-1.5 rounded-lg text-xs transition-colors" title="Set Budget Goals">
+                        <i class="fas fa-cog text-white"></i>
+                    </button>
+                </div>
+                <p class="text-xs text-indigo-200 mt-1">Total Net Worth</p>
+            </div>
+            <div class="text-right">
+                <h2 class="text-3xl font-bold" id="total-balance">₹0</h2>
+            </div>
+        </div>
+
+        <!-- 3 Specific Accounts -->
+        <div class="grid grid-cols-3 gap-2 mt-4">
+            <div class="bg-indigo-700 bg-opacity-50 p-2 rounded-lg text-center">
+                <p class="text-[10px] text-indigo-200 uppercase">Cash</p>
+                <p class="text-sm font-bold" id="cash-balance">₹0</p>
+            </div>
+            <div class="bg-indigo-700 bg-opacity-50 p-2 rounded-lg text-center">
+                <p class="text-[10px] text-indigo-200 uppercase">My Account</p>
+                <p class="text-sm font-bold" id="bank-balance">₹0</p>
+            </div>
+            <div class="bg-indigo-700 bg-opacity-50 p-2 rounded-lg text-center border border-indigo-400">
+                <p class="text-[10px] text-indigo-200 uppercase">Udhar</p>
+                <p class="text-sm font-bold" id="udhar-balance">₹0</p>
+            </div>
+        </div>
+    </header>
+
+    <!-- 50/30/20 Budget Progress Section -->
+    <div id="budget-display" class="w-full max-w-md bg-white p-4 rounded-xl card-shadow mb-6 hidden">
+        <h3 class="text-gray-700 font-bold mb-3 text-sm flex justify-between">
+            <span>Budget Progress (Monthly)</span>
+            <span class="text-xs text-gray-400" id="monthly-income-display">Income: ₹0</span>
+        </h3>
+        
+        <!-- Needs (50%) -->
+        <div class="mb-3">
+            <div class="flex justify-between text-xs mb-1">
+                <span class="font-semibold text-blue-600">Needs (Zaroorat)</span>
+                <span class="text-gray-500"><span id="spent-needs">0</span> / <span id="budget-needs">0</span></span>
+            </div>
+            <div class="w-full bg-gray-200 rounded-full h-2.5">
+                <div id="bar-needs" class="bg-blue-600 h-2.5 rounded-full progress-bar" style="width: 0%"></div>
+            </div>
+        </div>
+
+        <!-- Wants (30%) -->
+        <div class="mb-3">
+            <div class="flex justify-between text-xs mb-1">
+                <span class="font-semibold text-purple-600">Wants (Khwahish)</span>
+                <span class="text-gray-500"><span id="spent-wants">0</span> / <span id="budget-wants">0</span></span>
+            </div>
+            <div class="w-full bg-gray-200 rounded-full h-2.5">
+                <div id="bar-wants" class="bg-purple-600 h-2.5 rounded-full progress-bar" style="width: 0%"></div>
+            </div>
+        </div>
+
+        <!-- Savings (20%) -->
+        <div>
+            <div class="flex justify-between text-xs mb-1">
+                <span class="font-semibold text-green-600">Savings/Invst. (Bachat)</span>
+                <span class="text-gray-500"><span id="spent-savings">0</span> / <span id="budget-savings">0</span></span>
+            </div>
+            <div class="w-full bg-gray-200 rounded-full h-2.5">
+                <div id="bar-savings" class="bg-green-600 h-2.5 rounded-full progress-bar" style="width: 0%"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Income vs Expense Summary -->
+    <div class="w-full max-w-md grid grid-cols-2 gap-4 mb-6">
+        <div class="bg-white p-3 rounded-xl card-shadow border-l-4 border-green-500">
+            <p class="text-gray-500 text-xs font-bold uppercase">Total Income</p>
+            <p class="text-green-600 text-lg font-bold mt-1" id="total-income">₹0</p>
+        </div>
+        <div class="bg-white p-3 rounded-xl card-shadow border-l-4 border-red-500">
+            <p class="text-gray-500 text-xs font-bold uppercase">Total Expense</p>
+            <p class="text-red-600 text-lg font-bold mt-1" id="total-expense">₹0</p>
+        </div>
+    </div>
+
+    <!-- Chart Section -->
+    <div class="w-full max-w-md bg-white p-4 rounded-xl card-shadow mb-6">
+        <h3 class="text-gray-700 font-bold mb-4 text-sm">Analysis (Expense)</h3>
+        <div class="relative h-40 w-full flex justify-center">
+            <canvas id="expenseChart"></canvas>
+        </div>
+        <p id="no-data-msg" class="text-center text-gray-400 text-sm mt-4 hidden">No data yet.</p>
+    </div>
+
+    <!-- Add Transaction Form -->
+    <div class="w-full max-w-md bg-white p-6 rounded-xl card-shadow mb-6">
+        <h3 class="text-gray-800 font-bold mb-4 border-b pb-2">New Entry</h3>
+        
+        <div class="space-y-3">
+            <div class="flex gap-3">
+                <div class="w-1/2">
+                    <label class="block text-xs font-bold text-gray-500 mb-1">Type</label>
+                    <select id="type" onchange="toggleFormState()" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-indigo-500 text-sm font-semibold">
+                        <option value="income">Income (+)</option>
+                        <option value="expense">Expense (-)</option>
+                        <option value="transfer">Transfer (⇄)</option>
+                    </select>
+                </div>
+                <div class="w-1/2">
+                    <label class="block text-xs font-bold text-gray-500 mb-1">Amount (₹)</label>
+                    <input type="number" id="amount" placeholder="0" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-indigo-500 text-sm">
+                </div>
+            </div>
+
+            <!-- 50/30/20 Category Selector Dropdown -->
+            <div id="budget-category-container" class="hidden">
+                <label class="block text-xs font-bold text-gray-500 mb-1">Select Budget Category</label>
+                <select id="budget-cat-select" onchange="updateDescriptionList()" class="w-full p-3 bg-blue-50 border border-blue-100 rounded-lg focus:outline-none focus:border-blue-500 text-sm font-semibold text-blue-900">
+                    <option value="needs">Needs (Zaroorat - 50%)</option>
+                    <option value="wants">Wants (Khwahish - 30%)</option>
+                    <option value="savings">Savings (Bachat - 20%)</option>
+                </select>
+            </div>
+
+            <!-- Account Selection -->
+            <div>
+                <label id="account-label" class="block text-xs font-bold text-gray-500 mb-1">Select Account</label>
+                <select id="account-select" class="w-full p-3 bg-indigo-50 border border-indigo-100 rounded-lg focus:outline-none focus:border-indigo-500 text-sm font-semibold text-indigo-900">
+                    <option value="Cash">💵 Cash</option>
+                    <option value="My Account">🏦 My Account</option>
+                    <option value="Udhar">🤝 Udhar Diya Hua</option>
+                </select>
+            </div>
+
+            <!-- To Account (Transfer Only) -->
+            <div id="to-account-container" class="hidden">
+                <div class="flex justify-center text-indigo-400 py-1"><i class="fas fa-arrow-down"></i></div>
+                <label class="block text-xs font-bold text-gray-500 mb-1">To Account (Receiver)</label>
+                <select id="to-account-select" class="w-full p-3 bg-green-50 border border-green-100 rounded-lg focus:outline-none focus:border-green-500 text-sm font-semibold text-green-900">
+                    <option value="My Account">🏦 My Account</option>
+                    <option value="Cash">💵 Cash</option>
+                    <option value="Udhar">🤝 Udhar Diya Hua</option>
+                </select>
+            </div>
+
+            <!-- Description -->
+            <div>
+                <label class="block text-xs font-bold text-gray-500 mb-1">Description</label>
+                <input type="text" id="desc" list="income-list" placeholder="Select or type..." class="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-indigo-500 text-sm">
+                
+                <datalist id="income-list">
+                    <option value="Salary"></option>
+                    <option value="Part-time Job"></option>
+                    <option value="Gifts"></option>
+                    <option value="Festive Income (Eidi)"></option>
+                    <option value="Bonus"></option>
+                </datalist>
+
+                <datalist id="list-needs">
+                    <option value="Rent (Kiraya)"></option>
+                    <option value="Groceries (Rashan)"></option>
+                    <option value="Electricity Bill"></option>
+                    <option value="School Fees"></option>
+                    <option value="Medicine / Doctor"></option>
+                    <option value="Petrol / Transport"></option>
+                    <option value="Mobile Recharge"></option>
+                </datalist>
+
+                <datalist id="list-wants">
+                    <option value="Restaurant / Food"></option>
+                    <option value="Shopping (Clothes/Shoes)"></option>
+                    <option value="Cinema / Netflix"></option>
+                    <option value="Travel / Vacation"></option>
+                    <option value="Gadgets / Electronics"></option>
+                    <option value="Gifts to others"></option>
+                </datalist>
+
+                <datalist id="list-savings">
+                    <option value="Emergency Fund"></option>
+                    <option value="Gold Investment"></option>
+                    <option value="Mutual Funds / SIP"></option>
+                    <option value="Bank Deposit (FD/RD)"></option>
+                    <option value="Committee (BC)"></option>
+                </datalist>
+            </div>
+
+            <button onclick="addTransaction()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-lg transition duration-300 shadow-md mt-2">
+                Save Transaction
+            </button>
+        </div>
+    </div>
+
+    <!-- Transaction History -->
+    <div class="w-full max-w-md">
+        <div class="flex justify-between items-end mb-3">
+            <h3 class="text-gray-700 font-bold">Recent History</h3>
+            <div class="flex items-center gap-3">
+                <button onclick="downloadPDF()" class="text-xs flex items-center gap-1 text-indigo-600 hover:text-indigo-800 font-semibold bg-indigo-50 px-2 py-1 rounded border border-indigo-100">
+                    <i class="fas fa-file-pdf"></i> Download PDF
+                </button>
+                <button onclick="clearAll()" class="text-xs text-red-500 hover:text-red-700 underline">Clear All</button>
+            </div>
+        </div>
+        <ul id="list" class="space-y-3 pb-10"></ul>
+    </div>
+
+    <!-- BUDGET SETTINGS MODAL (Redesigned) -->
+    <div id="budget-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm">
+            <h3 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2">Set Monthly Budget</h3>
+            
+            <div class="space-y-4">
+                <!-- Income Row -->
+                <div class="flex items-center justify-between">
+                    <label class="text-sm font-bold text-gray-700 w-1/3">Total Income</label>
+                    <input type="number" id="setting-income" oninput="calculateLimits()" placeholder="Enter Total" class="w-2/3 p-2 bg-indigo-50 border border-indigo-200 rounded text-sm text-right font-bold text-indigo-700">
+                </div>
+                
+                <div class="text-[10px] text-gray-400 text-center uppercase tracking-wider">- Allocation (50/30/20) -</div>
+
+                <!-- Needs Row -->
+                <div class="flex items-center justify-between">
+                    <div class="w-1/3">
+                        <label class="block text-sm font-bold text-blue-600">Needs</label>
+                        <span class="text-[10px] text-gray-400">Zaroorat</span>
+                    </div>
+                    <input type="number" id="setting-needs" placeholder="Max 50%" class="w-2/3 p-2 bg-gray-50 border border-gray-200 rounded text-sm text-right focus:border-blue-500 outline-none">
+                </div>
+
+                <!-- Wants Row -->
+                <div class="flex items-center justify-between">
+                    <div class="w-1/3">
+                        <label class="block text-sm font-bold text-purple-600">Wants</label>
+                        <span class="text-[10px] text-gray-400">Khwahish</span>
+                    </div>
+                    <input type="number" id="setting-wants" placeholder="Max 30%" class="w-2/3 p-2 bg-gray-50 border border-gray-200 rounded text-sm text-right focus:border-purple-500 outline-none">
+                </div>
+
+                 <!-- Savings Row -->
+                <div class="flex items-center justify-between">
+                    <div class="w-1/3">
+                        <label class="block text-sm font-bold text-green-600">Savings</label>
+                        <span class="text-[10px] text-gray-400">Bachat</span>
+                    </div>
+                    <input type="number" id="setting-savings" placeholder="Min 20%" class="w-2/3 p-2 bg-gray-50 border border-gray-200 rounded text-sm text-right focus:border-green-500 outline-none">
+                </div>
+            </div>
+
+            <div class="flex gap-2 mt-6">
+                <button onclick="toggleBudgetModal()" class="w-1/2 py-2 text-gray-500 text-sm font-semibold hover:bg-gray-100 rounded">Cancel</button>
+                <button onclick="saveBudgetSettings()" class="w-1/2 py-2 bg-indigo-600 text-white text-sm font-bold rounded hover:bg-indigo-700">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // State variables
+        let transactions = JSON.parse(localStorage.getItem('transactions')) || [];
+        let budgetSettings = JSON.parse(localStorage.getItem('budgetSettings')) || null;
+        let chartInstance = null;
+
+        // Elements
+        const balanceEl = document.getElementById('total-balance');
+        const incomeEl = document.getElementById('total-income');
+        const expenseEl = document.getElementById('total-expense');
+        const cashBalanceEl = document.getElementById('cash-balance');
+        const bankBalanceEl = document.getElementById('bank-balance');
+        const udharBalanceEl = document.getElementById('udhar-balance');
+        const listEl = document.getElementById('list');
+        const descInput = document.getElementById('desc');
+        const amountInput = document.getElementById('amount');
+        const typeInput = document.getElementById('type');
+        const accountInput = document.getElementById('account-select');
+        const toAccountInput = document.getElementById('to-account-select');
+        const toAccountContainer = document.getElementById('to-account-container');
+        const accountLabel = document.getElementById('account-label');
+        const noDataMsg = document.getElementById('no-data-msg');
+        const budgetCategoryContainer = document.getElementById('budget-category-container');
+        const budgetCatSelect = document.getElementById('budget-cat-select');
+
+        // Initial Render
+        updateValues();
+        toggleFormState();
+        updateBudgetDisplay();
+
+        // --- Budget Logic ---
+
+        function toggleBudgetModal() {
+            const modal = document.getElementById('budget-modal');
+            const isHidden = modal.classList.contains('hidden');
+            
+            if (isHidden) {
+                modal.classList.remove('hidden');
+                // Load existing values if available
+                if (budgetSettings) {
+                    document.getElementById('setting-income').value = budgetSettings.income;
+                    document.getElementById('setting-needs').value = budgetSettings.needs;
+                    document.getElementById('setting-wants').value = budgetSettings.wants;
+                    document.getElementById('setting-savings').value = budgetSettings.savings;
+                    calculateLimits();
+                }
+            } else {
+                modal.classList.add('hidden');
+            }
+        }
+
+        function calculateLimits() {
+            const income = +document.getElementById('setting-income').value;
+            if(income > 0) {
+                const needsMax = (income * 0.50).toFixed(0);
+                const wantsMax = (income * 0.30).toFixed(0);
+                const savingsMin = (income * 0.20).toFixed(0);
+
+                // Update placeholders with specific amounts based on income
+                document.getElementById('setting-needs').placeholder = Max: ${needsMax};
+                document.getElementById('setting-wants').placeholder = Max: ${wantsMax};
+                document.getElementById('setting-savings').placeholder = Min: ${savingsMin};
+            } else {
+                document.getElementById('setting-needs').placeholder = "Max 50%";
+                document.getElementById('setting-wants').placeholder = "Max 30%";
+                document.getElementById('setting-savings').placeholder = "Min 20%";
+            }
+        }
+
+        function saveBudgetSettings() {
+            const income = +document.getElementById('setting-income').value;
+            const needs = +document.getElementById('setting-needs').value;
+            const wants = +document.getElementById('setting-wants').value;
+            const savings = +document.getElementById('setting-savings').value;
+
+            if (income <= 0) {
+                alert("Please enter a valid income.");
+                return;
+            }
+
+            if (needs > (income * 0.50)) {
+                alert(Needs Budget cannot exceed 50% (₹${income * 0.50})!);
+                return;
+            }
+            if (wants > (income * 0.30)) {
+                alert(Wants Budget cannot exceed 30% (₹${income * 0.30})!);
+                return;
+            }
+            
+            budgetSettings = { income, needs, wants, savings };
+            localStorage.setItem('budgetSettings', JSON.stringify(budgetSettings));
+            
+            toggleBudgetModal();
+            updateBudgetDisplay();
+            // alert("Budget set successfully!"); // Removing alert for smoother experience
+        }
+
+        function updateBudgetDisplay() {
+            const display = document.getElementById('budget-display');
+            if (!budgetSettings) {
+                display.classList.add('hidden');
+                return;
+            }
+            display.classList.remove('hidden');
+
+            document.getElementById('monthly-income-display').innerText = Planned Income: ₹${budgetSettings.income};
+            
+            // Calculate spent per category
+            let spentNeeds = 0;
+            let spentWants = 0;
+            let spentSavings = 0;
+
+            transactions.forEach(t => {
+                if (t.type === 'expense') {
+                    if (t.budgetCat === 'needs') spentNeeds += t.amount;
+                    if (t.budgetCat === 'wants') spentWants += t.amount;
+                    if (t.budgetCat === 'savings') spentSavings += t.amount;
+                }
+            });
+
+            updateBar('needs', spentNeeds, budgetSettings.needs);
+            updateBar('wants', spentWants, budgetSettings.wants);
+            updateBar('savings', spentSavings, budgetSettings.savings);
+        }
+
+        function updateBar(type, spent, total) {
+            const bar = document.getElementById(bar-${type});
+            const spentText = document.getElementById(spent-${type});
+            const totalText = document.getElementById(budget-${type});
+            
+            spentText.innerText = ₹${spent};
+            totalText.innerText = ₹${total};
+
+            let pct = total > 0 ? (spent / total) * 100 : 0;
+            if (pct > 100) pct = 100;
+            
+            bar.style.width = ${pct}%;
+            
+            if (spent > total) {
+                bar.classList.remove('bg-blue-600', 'bg-purple-600', 'bg-green-600');
+                bar.classList.add('bg-red-500');
+            }
+        }
+
+        // --- Core App Logic ---
+
+        function toggleFormState() {
+            const type = typeInput.value;
+            
+            if (type === 'transfer') {
+                toAccountContainer.classList.remove('hidden');
+                budgetCategoryContainer.classList.add('hidden');
+                accountLabel.innerText = "From Account (Sender)";
+                descInput.placeholder = "e.g. ATM Withdrawal";
+                descInput.removeAttribute('list');
+            } else if (type === 'expense') {
+                toAccountContainer.classList.add('hidden');
+                budgetCategoryContainer.classList.remove('hidden');
+                accountLabel.innerText = "Select Account";
+                updateDescriptionList(); // Set correct list for current selection
+            } else {
+                // Income
+                toAccountContainer.classList.add('hidden');
+                budgetCategoryContainer.classList.add('hidden');
+                accountLabel.innerText = "Select Account";
+                descInput.setAttribute('list', 'income-list');
+                descInput.placeholder = "Select source (e.g. Salary)...";
+            }
+        }
+
+        function updateDescriptionList() {
+            if (typeInput.value !== 'expense') return;
+            
+            const cat = budgetCatSelect.value; // needs, wants, savings
+            const listMap = {
+                'needs': 'list-needs',
+                'wants': 'list-wants',
+                'savings': 'list-savings'
+            };
+            
+            descInput.setAttribute('list', listMap[cat]);
+            descInput.placeholder = Select ${cat} item...;
+            descInput.value = ''; // Clear to avoid confusion
+        }
+
+        function addTransaction() {
+            const desc = descInput.value.trim();
+            const amount = +amountInput.value.trim();
+            const type = typeInput.value;
+            const account = accountInput.value;
+            const toAccount = toAccountInput.value;
+            let budgetCat = null;
+
+            if (type === 'expense') {
+                budgetCat = budgetCatSelect.value;
+            }
+
+            if (desc === '' || amount === 0 || isNaN(amount)) {
+                alert("Please enter valid details");
+                return;
+            }
+
+            if (type === 'transfer' && account === toAccount) {
+                alert("Accounts cannot be same!");
+                return;
+            }
+
+            // Budget Warning Logic
+            if (type === 'expense' && budgetSettings) {
+                let currentSpent = transactions
+                    .filter(t => t.type === 'expense' && t.budgetCat === budgetCat)
+                    .reduce((acc, t) => acc + t.amount, 0);
+                
+                let limit = budgetSettings[budgetCat];
+                if (limit > 0 && (currentSpent + amount) > limit) {
+                     if(!confirm(Warning: This will exceed your ${budgetCat.toUpperCase()} budget! Continue?)) {
+                         return;
+                     }
+                }
+            }
+
+            const transaction = {
+                id: Math.floor(Math.random() * 1000000),
+                desc, amount, type, account, toAccount, budgetCat
+            };
+
+            transactions.push(transaction);
+            updateLocalStorage();
+            updateValues();
+            updateBudgetDisplay();
+
+            descInput.value = '';
+            amountInput.value = '';
+            typeInput.value = 'income'; // Reset to default
+            toggleFormState();
+        }
+
+        function removeTransaction(id) {
+            if(confirm("Delete this entry?")) {
+                transactions = transactions.filter(t => t.id !== id);
+                updateLocalStorage();
+                updateValues();
+                updateBudgetDisplay();
+            }
+        }
+
+        function clearAll() {
+            if(confirm("Delete all data?")) {
+                transactions = [];
+                updateLocalStorage();
+                updateValues();
+                updateBudgetDisplay();
+            }
+        }
+
+        function updateValues() {
+            // Totals
+            const income = transactions.filter(t => t.type === 'income').reduce((acc, t) => acc + t.amount, 0);
+            const expense = transactions.filter(t => t.type === 'expense').reduce((acc, t) => acc + t.amount, 0);
+
+            // Account Balances
+            const calcBal = (accName) => transactions.reduce((acc, t) => {
+                if (t.type === 'transfer') {
+                    if (t.account === accName) return acc - t.amount;
+                    if (t.toAccount === accName) return acc + t.amount;
+                    return acc;
+                }
+                if (t.account === accName) {
+                    return t.type === 'income' ? acc + t.amount : acc - t.amount;
+                }
+                return acc;
+            }, 0);
+
+            const cashBal = calcBal('Cash');
+            const bankBal = calcBal('My Account');
+            const udharBal = calcBal('Udhar');
+            const total = cashBal + bankBal + udharBal;
+
+            // DOM Updates
+            balanceEl.innerText = ₹${total.toFixed(2)};
+            incomeEl.innerText = ₹${income.toFixed(2)};
+            expenseEl.innerText = ₹${expense.toFixed(2)};
+            cashBalanceEl.innerText = ₹${cashBal.toFixed(2)};
+            bankBalanceEl.innerText = ₹${bankBal.toFixed(2)};
+            udharBalanceEl.innerText = ₹${udharBal.toFixed(2)};
+
+            renderList();
+            updateChart();
+        }
+
+        function renderList() {
+            listEl.innerHTML = '';
+            transactions.slice().reverse().forEach(t => {
+                let sign, borderClass, textClass, icon, subText;
+
+                if (t.type === 'transfer') {
+                    sign = '⇄'; borderClass = 'border-blue-500'; textClass = 'text-blue-600'; icon = 'fa-exchange-alt';
+                    subText = ${t.account} -> ${t.toAccount};
+                } else {
+                    sign = t.type === 'income' ? '+' : '-';
+                    borderClass = t.type === 'income' ? 'border-green-500' : 'border-red-500';
+                    textClass = t.type === 'income' ? 'text-green-600' : 'text-red-600';
+                    icon = t.account === 'My Account' ? 'fa-university' : (t.account === 'Udhar' ? 'fa-handshake' : 'fa-money-bill-wave');
+                    subText = t.account || 'General';
+                    // Add budget tag to subtext
+                    if(t.type === 'expense' && t.budgetCat) {
+                        subText += ` • ${t.budgetCat.charAt(0).toUpperCase() + t.budgetCat.slice(1)}`;
+                    }
+                }
+
+                const li = document.createElement('li');
+                li.className = bg-white p-3 rounded-lg shadow-sm border-l-4 ${borderClass} flex justify-between items-center;
+                li.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <div class="text-gray-400 bg-gray-100 p-2 rounded-full w-8 h-8 flex items-center justify-center"><i class="fas ${icon} text-xs"></i></div>
+                        <div class="flex flex-col">
+                            <span class="font-semibold text-gray-700 text-sm">${t.desc}</span>
+                            <span class="text-[10px] text-gray-500 uppercase bg-gray-100 px-1 rounded inline-block w-max">${subText}</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span class="font-bold ${textClass} text-sm">${sign}₹${Math.abs(t.amount)}</span>
+                        <button onclick="removeTransaction(${t.id})" class="text-gray-300 hover:text-red-500"><i class="fas fa-times"></i></button>
+                    </div>
+                `;
+                listEl.appendChild(li);
+            });
+        }
+
+        function updateLocalStorage() {
+            localStorage.setItem('transactions', JSON.stringify(transactions));
+        }
+
+        function updateChart() {
+            const expenses = transactions.filter(t => t.type === 'expense');
+            if (expenses.length === 0) {
+                if(chartInstance) { chartInstance.destroy(); chartInstance = null; }
+                noDataMsg.classList.remove('hidden'); return;
+            }
+            noDataMsg.classList.add('hidden');
+
+            const cats = { 'needs': 0, 'wants': 0, 'savings': 0, 'other': 0 };
+            expenses.forEach(t => {
+                const c = t.budgetCat || 'other';
+                cats[c] = (cats[c] || 0) + t.amount;
+            });
+
+            const ctx = document.getElementById('expenseChart').getContext('2d');
+            if (chartInstance) chartInstance.destroy();
+
+            chartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Needs', 'Wants', 'Savings/Inv', 'Uncategorized'],
+                    datasets: [{
+                        data: [cats.needs, cats.wants, cats.savings, cats.other],
+                        backgroundColor: ['#2563eb', '#9333ea', '#16a34a', '#9ca3af'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: {size: 10} } } }
+                }
+            });
+        }
+
+        function downloadPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            doc.setFillColor(79, 70, 229); doc.rect(0, 0, 210, 25, 'F');
+            doc.setTextColor(255, 255, 255); doc.setFontSize(16); doc.text("Madani Budget Planner", 14, 15);
+            doc.setFontSize(10); doc.text("Financial Statement", 160, 15);
+            
+            doc.setTextColor(0, 0, 0); doc.setFontSize(11);
+            doc.text(Report Date: ${new Date().toLocaleDateString()}, 14, 40);
+            doc.text(Net Worth: ${balanceEl.innerText}, 14, 50);
+            
+            const rows = transactions.slice().reverse().map(t => [
+                t.desc, t.type.toUpperCase(), t.type === 'expense' ? -${t.amount} : +${t.amount}
+            ]);
+            doc.autoTable({ head: [['Description', 'Type', 'Amount']], body: rows, startY: 60 });
+            doc.save('Budget_Report.pdf');
+        }
+    </script>
+</body>
+</html>
